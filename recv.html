@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<!-- saved from url=(0040)http://iosif1011.dothome.co.kr/recv.html -->
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+	<style type="text/css">
+		body, html {
+			overflow:hidden;
+			height: 100%;
+			border-width: 0px;
+			margin-top: 0px;
+			margin-bottom: 0px;
+			margin-right: 0px;
+			margin-left: 0px;
+			padding-top: 0px;
+			padding-bottom: 0px;
+			padding-right: 0px;
+			padding-left: 0px;
+			background-image: url("free-hd-background-18447-18914-hd-wallpapers.png");
+			background-repeat: no-repeat;
+			background-size: cover;
+		}
+		#content
+        {
+            position:absolute; left: 0; right: 0; bottom: 0; top: 0px; 
+        }
+		video {
+			background-color: #000000;
+			border-width: 0px;
+			margin-top: 0px;
+			margin-bottom: 0px;
+			margin-right: 0px;
+			margin-left: 0px;
+			padding-top: 0px;
+			padding-bottom: 0px;
+			padding-right: 0px;
+			padding-left: 0px;
+		}
+		iframe {
+			
+		}
+		
+	</style>
+    <meta charset="utf-8">
+	<title>Receiver Test Page</title>
+    <script src="./recv_files/jquery.min.js" type="text/javascript"></script>
+    <script src="./recv_files/mediaelement-and-player.min.js"></script>
+    <link rel="stylesheet" href="http://mediaelementjs.com/js/mejs-2.9.2/mediaelementplayer.min.css">
+	</head>
+<body>
+<script src="./recv_files/cast_receiver.js"></script>
+<script type="text/javascript">
+	var count = 0;
+	var Pstate = 0;
+	var Istate = 0;
+	var d;
+
+    var log = function(s) {
+        console.log(s);
+        if (document.readyState !== "complete") {
+            log.buffer.push(s);
+        } else {
+            document.getElementById("output").innerHTML += (s + "\n")
+        }
+    }
+    log.buffer = [];
+    // ??? ???? ????? ?��? ?????? ??
+    url = "ws://192.168.0.11:8080";
+    w = new WebSocket(url);
+ 
+    w.onopen = function() {
+        console.log("open");
+        w.send('receiver@connect');
+    }
+	
+    w.onmessage = function(e) {
+	
+		// e.data?? split??? video??? vstart() ???? ???? istart()????
+		// ?????? iframe, video, player?? ??? url?? ???????? ??????? ??????? ????????
+		
+		// ??????
+		// play ????? ???????? ?? ?????? ???????? ??????..
+		var tmp = e.data;
+		var mess = tmp.split('#'); // mess[0] : url, mess[1] : data type ( 'url' or 'video' )
+
+		if(e.data === 'tetris'){
+			location.href="http://long567.dothome.co.kr/custom/sample_media_receiver.html";
+		}
+		else{
+			switch(mess[1]){
+		
+			case 'url' : {
+				console.log("iframe index");
+				console.log("url : " + mess[0]);
+				vstart(mess[0],1);				
+				break;
+			}
+			
+			case 'video' : {
+				console.log("video index");
+				console.log("url : " + mess[0]);
+				vstart(mess[0],0);
+				break;
+			}
+			default : {
+				console.log("default : " + e.data);
+				break;
+			}		
+		}
+		}
+		
+		// video , player ?? ?????? count o??
+		// count ?? 0????? ?????????.. 1????? ????? ??????? ????? ????
+		 
+		console.log(e.data + count);
+		w.send('Receiver Video Started');
+    }
+	
+	/* e : url p : ?? */
+	function vstart(e,p)
+	{
+		clearTimeout(d);
+		console.log("function start");
+		console.log(e);
+		var tmp = e;
+		
+		console.log("===============");
+		console.log(p);
+		console.log(Pstate);
+		console.log(Istate);
+		console.log("===============");
+		
+		// ??o?? iframe ???? and ???? iframe ????
+		
+		var x = document.createElement("VIDEO");
+		
+		var createV = function(a){
+			console.log("video create [1][2][3]");
+			x.id='Vplayer' + count;
+			x.setAttribute("width", $(window).width() );
+			x.setAttribute("height", $(window).height() );
+			x.setAttribute("controls", "controls");
+			x.setAttribute("type", "video/youtube");
+			x.autoplay=true;
+			x.setAttribute("src", a);
+			document.body.appendChild(x);
+		}	
+		
+		if(p === 1 && Pstate === 0 && Istate === 0) {
+			
+			console.log("iframe create ! (1)~~");
+			makeFrame(tmp);
+			var frame = document.getElementById("Vplayer" + count);
+			frame.parentNode.removeChild(frame); makeFrame(tmp);
+			
+		}
+		else if(p === 1 && Pstate === 0 && Istate === 1 ) { 
+			console.log("iframe end iframe load~~");
+			dframe();
+			//var frame = document.getElementById("d");
+			//frame.parentNode.removeChild(frame);
+			makeFrame(tmp);
+		}
+		else if (p === 0 && Pstate === 0 && Istate === 1){
+				createV(tmp);
+				var frame = document.getElementById("d");
+				frame.parentNode.removeChild(frame);
+				Pstate = 1;
+				console.log("iframe end VIDEO LOAD~~");
+		}
+		else{console.log("nothing happened")}
+
+		// ??o?? video ???? and ???? video ????
+		if(Pstate === 0 && p === 0 && Istate === 0) {
+			createV(tmp); Pstate = 1;
+			console.log("V create!~~");
+			//player.play();
+		}
+		
+		
+		var player = new MediaElementPlayer('#Vplayer' + count,{
+			success: function(me){
+				console.log("MediaElementPlayer create");
+				me.play();
+				Pstate = 1;
+				Istate = 0;
+				me.addEventListener('playing', function() {
+					console.log("video playing");
+				}, false);
+				
+				me.addEventListener('ended', function() {
+					console.log("video end");
+					w.send('receiver@end');
+					// ?????? video, mediaelementplayer ?? ????
+					var frame = document.getElementById("Vplayer" + count);
+					frame.parentNode.removeChild(frame);
+					player.remove();
+					Pstate = 0;
+					Istate = 0;
+					count++;
+				}, false);
+			}
+			});
+			
+			
+			player.pause();
+			
+			console.log("interrupt!");
+			// video ?????? interupt if(iframe) else(video)
+			if(p === 1 && Pstate === 1) {
+				console.log("iframe create (2)");
+				player.remove(); 
+				var frame = document.getElementById("Vplayer" + count);
+				frame.parentNode.removeChild(frame); makeFrame(tmp);
+				p=0; Pstate = 0;}
+			else if(p === 0 && Pstate === 1){
+/*			$('video').mediaelementplayer({
+					success: function(media, node, player){
+						media.addEventListener('pause', function(){
+							media.setSrc(tmp);
+							media.load();
+							media.play();
+						}, false);
+					}
+				});*/
+				player.setSrc(tmp);
+				console.log("video end video load");
+				player.load();
+				player.play();
+			}
+			else if(p === 1 && Pstate === 0 && Istate === 1){
+				console.log("iframe end iframe load");
+				//var frame = document.getElementById("d");
+				//frame.parentNode.removeChild(frame);
+				makeFrame(tmp);
+			}
+			else if(p === 0 && Istate === 1){
+				var frame = document.getElementById("d");
+				frame.parentNode.removeChild(frame);
+				player.setSrc(tmp);
+				console.log("iframe end video load");
+				player.load();
+			}
+			else {}
+		// load??? ?��?
+	}
+	
+	function makeFrame(e) {
+		Pstate = 0;
+		Istate = 1;
+		console.log("iframe start!");
+		console.log(e);
+		var ifrm = document.createElement("IFRAME");
+		ifrm.id = 'd';
+		ifrm.setAttribute("src", e); 
+		ifrm.style.width = "100%"; 
+		ifrm.style.height = "100%";
+		ifrm.frameborder="0";
+		d = setTimeout("deletE()", 10000);
+		
+		p = 0;
+		document.body.appendChild(ifrm); 
+	} 
+
+	function deletE(){
+	
+		 if(Istate === 1){
+			 console.log("iframe delete");
+			 var frame = document.getElementById("d");
+			 frame.parentNode.removeChild(frame);
+			 Istate = 0;
+			 w.send('receiver@end');
+		 }
+		 else{Istate = 0;}
+	}
+	
+	function dframe(){
+		console.log("iframe delete frame()");
+		var frame = document.getElementById("d");
+		frame.parentNode.removeChild(frame);
+	
+	}
+	
+	w.onclose = function(e) {
+        console.log("closed");
+    }
+	window.onload = function() {
+    
+      window.castReceiverManager = cast.receiver.CastReceiverManager.getInstance();
+      window.castReceiverManager.start();
+    }
+	function wait(msecs)
+{
+var start = new Date().getTime();
+var cur = start;
+while(cur - start < msecs)
+{
+cur = new Date().getTime();
+}
+}
+</script></body></html>
